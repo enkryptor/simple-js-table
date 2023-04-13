@@ -9,10 +9,14 @@ const submitButton = document.querySelector('#submit-button');
 const dataOutput =  document.querySelector('#data-output');
 
 const table = new TemplateTable(rowTemplate);
+
+// "Add row" button handler
 addRowButton.addEventListener('click', () => table.addRow());
+
+// "Submit data" button handler
 submitButton.addEventListener('click', () => {
     const data = table.getData();
-    const text = document.createTextNode(JSON.stringify(data));
+    const text = document.createTextNode(JSON.stringify(data, null, 2));
     dataOutput.replaceChildren(text);
 });
 
