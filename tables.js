@@ -42,7 +42,7 @@ export class TemplateTable {
      * @param {*[]} data 
      */
     setData(data) {
-        this.data = data;
+        this.data = structuredClone(data);
         this.redraw();
     }
 
@@ -66,6 +66,7 @@ export class TemplateTable {
      * Add new table row
      */
     addRow() {
+        this.data = this.getData();
         this.data.push({});
         this.redraw();
     }
@@ -74,6 +75,7 @@ export class TemplateTable {
      * Delete a table row with the specified index
      */
     deleteRow(index) {
+        this.data = this.getData();
         this.data.splice(index, 1);
         this.redraw();
     }
