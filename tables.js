@@ -7,12 +7,13 @@ export class TemplateTable {
      * 
      * @param {HTMLTemplateElement} rowTemplate 
      */
-    constructor(rowTemplate) {
+    constructor(rowTemplate, { actions }={}) {
         validateTemplate(rowTemplate);
         this.template = rowTemplate;
         this.rows = [];
         this.data = [];
         this.root = null;
+        this.actions = actions ?? {};
         this.clickListener = tableClickListener.bind(this);
     }
 
@@ -51,9 +52,9 @@ export class TemplateTable {
      */
     getData() {
         return this.rows.map((row, index) => {
-            const controls = row.querySelectorAll("[name]");
+            const controls = row.querySelectorAll('[name]');
             const entries = [...controls]
-                .map(el =>([el.getAttribute("name"), getValue(el)]))
+                .map(el =>([el.getAttribute('name'), getValue(el)]))
                 .filter(pair => pair[1] !== undefined);
             return {
                 ...this.data[index],
@@ -97,15 +98,22 @@ export class TemplateTable {
  */
 function tableClickListener(event) {
     const target = event.target;
-    const tableRow = target.closest("tr");
+    const tableRow = target.closest('tr');
     const dataIndex = Number(tableRow.dataset.index);
     if (Number.isNaN(dataIndex)) {
-        throw new Error("Can't find the row index.");
+        throw new Error('Can\'t find the row index.');
     }
+    const name = target.getAttribute('name');
 
     // Row operations:
-    if (target.getAttribute("name") === "delete") {
+    if (name === 'delete') {
         this.deleteRow(dataIndex);
+    }
+
+    // Custom actions:
+    const action = this.actions[name];
+    if (action) {
+        action(this.data[dataIndex]);
     }
 }
 
@@ -122,9 +130,7 @@ function createRow(record, index, template) {
     for (const field in record) {
         const value = record[field]
         const element = row.querySelector(`[name=${field}]`);
-        if (!element) {
-            console.warn(`Column "${field}" not found.`);
-        } else {
+        if (element) {
             setValue(element, value);
         }
     }
@@ -139,7 +145,7 @@ function createRow(record, index, template) {
  */
 function setValue(element, value) {
     if (element instanceof HTMLInputElement) {
-        if (element.getAttribute("type") === "checkbox") {
+        if (element.getAttribute('type') === 'checkbox') {
             element.checked = Boolean(value);
         } else {
             element.value = value;
@@ -157,10 +163,10 @@ function setValue(element, value) {
  */
 function getValue(element) {
     if (element instanceof HTMLInputElement) {
-        const type = element.getAttribute("type");
-        if (type === "checkbox") {
+        const type = element.getAttribute('type');
+        if (type === 'checkbox') {
             return (element.checked);
-        } else if (type === "number") {
+        } else if (type === 'number') {
             return Number(element.value);
         } else {
             return element.value;
@@ -175,6 +181,6 @@ function getValue(element) {
  */
 function validateTemplate(template) {
     if (!(template.content.firstElementChild instanceof HTMLTableRowElement)) {
-        throw Error("Root element of the template must be a <tr> element.");
+        throw Error('Root element of the template must be a <tr> element.');
     }
 }
