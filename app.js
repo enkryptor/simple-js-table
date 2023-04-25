@@ -20,6 +20,10 @@ const openModal = (data) => {
 const options = {
     actions: {
         menu: openModal,
+    },
+    validators: {
+        firstName: Boolean, // required field
+        year: x => /^\d\d\d\d$/.test(x) , // four numbers
     }
 };
 

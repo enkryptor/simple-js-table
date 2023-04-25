@@ -6,15 +6,18 @@ export class TemplateTable {
      * Create new table
      * 
      * @param {HTMLTemplateElement} rowTemplate 
+     * @param {{actions: function[], validators: function[]}} options 
      */
-    constructor(rowTemplate, { actions }={}) {
+    constructor(rowTemplate, { actions, validators }={}) {
         validateTemplate(rowTemplate);
         this.template = rowTemplate;
         this.rows = [];
         this.data = [];
         this.root = null;
         this.actions = actions ?? {};
-        this.clickListener = tableClickListener.bind(this);
+        this.validators = validators ?? {};
+        this.clickListener = this.clickListener.bind(this);
+        this.inputListener = this.inputListener.bind(this);
     }
 
     /**
@@ -24,7 +27,8 @@ export class TemplateTable {
      */
     attach(root) {
         this.root = root;
-        this.root.addEventListener('click', this.clickListener)
+        this.root.addEventListener('click', this.clickListener);
+        this.root.addEventListener('input', this.inputListener);
         this.redraw();
     }
 
@@ -33,7 +37,8 @@ export class TemplateTable {
      */
     detach() {
         this.redraw();
-        this.root.removeEventListener('click', this.clickListener)
+        this.root.removeEventListener('click', this.clickListener);
+        this.root.removeEventListener('input', this.inputListener);
         this.root = null;
     }
 
@@ -51,23 +56,13 @@ export class TemplateTable {
      * Get data from the table, edited by user
      */
     getData() {
-        return this.rows.map((row, index) => {
-            const controls = row.querySelectorAll('[name]');
-            const entries = [...controls]
-                .map(el =>([el.getAttribute('name'), getValue(el)]))
-                .filter(pair => pair[1] !== undefined);
-            return {
-                ...this.data[index],
-                ...Object.fromEntries(entries)
-            }
-        });
+        return this.data;
     }
 
     /**
-     * Add new table row
+     * Add a new table row
      */
     addRow() {
-        this.data = this.getData();
         this.data.push({});
         this.redraw();
     }
@@ -76,7 +71,6 @@ export class TemplateTable {
      * Delete a table row with the specified index
      */
     deleteRow(index) {
-        this.data = this.getData();
         this.data.splice(index, 1);
         this.redraw();
     }
@@ -89,31 +83,66 @@ export class TemplateTable {
         this.rows = this.data.map((record, index) => createRow(record, index, this.template));
         this.root.replaceChildren(...this.rows);
     }
-}
 
-/**
- * A 'click' event handler
- *
- * @param {MouseEvent} event 
- */
-function tableClickListener(event) {
-    const target = event.target;
-    const tableRow = target.closest('tr');
-    const dataIndex = Number(tableRow.dataset.index);
-    if (Number.isNaN(dataIndex)) {
-        throw new Error('Can\'t find the row index.');
+    /**
+     * A 'click' event handler
+     *
+     * @param {MouseEvent} event 
+     */
+    clickListener(event) {
+        const { name, index } = this.getCell(event.target);
+
+        // Row operations:
+        if (name === 'delete') {
+            this.deleteRow(index);
+        }
+
+        // Custom actions:
+        const action = this.actions[name];
+        if (action) {
+            action(this.data[index]);
+        }
     }
-    const name = target.getAttribute('name');
 
-    // Row operations:
-    if (name === 'delete') {
-        this.deleteRow(dataIndex);
+    /**
+     * An 'input' event handler
+     *
+     * @param {InputEvent} event 
+     */
+    inputListener(event) {
+        const element = event.target;
+        const { name,index } = this.getCell(element);
+
+        // Update the cell value:
+        const value = getValue(element);
+        this.data[index][name] = value;
+
+        // Validate the value:
+        const validator = this.validators[name];
+        if (!validator) {
+            return;
+        }
+        const valid = validator(value);
+        if (!valid) {
+            element.classList.add('is-invalid');
+        } else {
+            element.classList.remove('is-invalid');
+        }
     }
 
-    // Custom actions:
-    const action = this.actions[name];
-    if (action) {
-        action(this.data[dataIndex]);
+    /**
+     * Get the respective table cell coordinates
+     * @param {HTMLElement} element 
+     * @returns 
+     */
+    getCell(element) {
+        const name = element.getAttribute('name');
+        const tableRow = element.closest('tr');
+        const index = Number(tableRow.dataset.index);
+        if (Number.isNaN(index)) {
+            throw new Error('Can\'t find the row index.');
+        }
+        return { name, index };
     }
 }
 
